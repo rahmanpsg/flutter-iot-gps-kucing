@@ -1,0 +1,27 @@
+name: iot_gps_kucing
+version: 1.0.0+1
+publish_to: none
+description: A new Flutter project.
+environment:
+  sdk: ">=2.15.1 <3.0.0"
+
+dependencies:
+  cupertino_icons: ^1.0.2
+  flutter:
+    sdk: flutter
+  get: 4.6.1
+  google_maps_flutter: ^2.1.1
+
+dev_dependencies:
+  flutter_lints: ^1.0.0
+  flutter_test:
+    sdk: flutter
+  lints: 1.0.1
+
+flutter:
+  uses-material-design: true
+
+  fonts:
+    - family: Redressed
+      fonts:
+        - asset: assets/fonts/Redressed.ttf
