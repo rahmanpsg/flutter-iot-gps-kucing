@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 
-import 'package:get/get.dart';
 import 'package:iot_gps_kucing/app/themes/app_colors.dart';
 
-import '../controllers/profil_controller.dart';
-
-class ProfilView extends GetView<ProfilController> {
+class ProfilView extends StatelessWidget {
   final String judul = 'IOT GPS Kucing';
-  final String nama = 'Ainun mayada';
+  final String nama = 'Ainun Mayada';
   final String nim = '217280078';
   final String pembimbing1 = "Ade Hastuti, ST., S. Kom., MT";
   final String pembimbing2 = "Ahmad Selao, S.Tp., M.Sc";

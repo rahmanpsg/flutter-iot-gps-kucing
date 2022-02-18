@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:iot_gps_kucing/app/controllers/lokasi_controller.dart';
 import 'package:iot_gps_kucing/app/themes/app_colors.dart';
-
-import '../controllers/lokasi_controller.dart';
 
 class LokasiView extends GetView<LokasiController> {
   @override
@@ -39,25 +38,25 @@ class LokasiView extends GetView<LokasiController> {
                         ListTile(
                           dense: true,
                           leading: Text("Latitude"),
-                          title: Text(": ${controller.latitude.value}"),
+                          title: Text(": ${controller.lokasi.value.latitude}"),
                           horizontalTitleGap: 30,
                         ),
                         ListTile(
                           dense: true,
                           leading: Text("Longitude"),
-                          title: Text(": ${controller.longitude.value}"),
+                          title: Text(": ${controller.lokasi.value.longitude}"),
                           horizontalTitleGap: 24,
                         ),
                         ListTile(
                           dense: true,
                           leading: Text("Suhu"),
-                          title: Text(": 0 C"),
+                          title: Text(": ${controller.lokasi.value.suhu} C"),
                           horizontalTitleGap: 35,
                         ),
                         ListTile(
                           dense: true,
                           leading: Text("Waktu"),
-                          title: Text(": ${DateTime.now()}"),
+                          title: Text(": ${controller.lokasi.value.waktu}"),
                           horizontalTitleGap: 35,
                         ),
                       ],

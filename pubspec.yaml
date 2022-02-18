@@ -7,21 +7,25 @@ environment:
 
 dependencies:
   cupertino_icons: ^1.0.2
-  flutter:
-    sdk: flutter
+  firebase_core: ^1.12.0
+  firebase_database: ^9.0.6
+  firebase_messaging: ^11.2.6
   get: 4.6.1
   google_maps_flutter: ^2.1.1
+  intl: ^0.17.0
+  input_slider: ^0.3.0
+  flutter:
+    sdk: flutter
 
 dev_dependencies:
   flutter_lints: ^1.0.0
+  lints: 1.0.1
   flutter_test:
     sdk: flutter
-  lints: 1.0.1
 
 flutter:
-  uses-material-design: true
-
   fonts:
     - family: Redressed
       fonts:
         - asset: assets/fonts/Redressed.ttf
+  uses-material-design: true

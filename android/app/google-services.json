@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "614125818945",
+    "firebase_url": "https://kucing1-72e99-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "kucing1-72e99",
+    "storage_bucket": "kucing1-72e99.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:614125818945:android:923c83eb12010e67bea2c0",
+        "android_client_info": {
+          "package_name": "com.skripsi.iot_gps_kucing"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "614125818945-10esel52dsp1k8psihmbm44f2rhur5cf.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDHWVTcj9byOqzwCdGq2crTddYKbt0GV78"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "614125818945-10esel52dsp1k8psihmbm44f2rhur5cf.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

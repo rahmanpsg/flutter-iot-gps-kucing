@@ -1,5 +1,5 @@
 import 'package:get/get.dart';
-import 'package:iot_gps_kucing/app/modules/lokasi/controllers/lokasi_controller.dart';
+import 'package:iot_gps_kucing/app/controllers/lokasi_controller.dart';
 
 import '../controllers/landing_controller.dart';
 
