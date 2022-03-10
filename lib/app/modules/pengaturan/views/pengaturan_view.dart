@@ -107,61 +107,64 @@ class PengaturanView extends GetView<LokasiController> {
                   ),
                   onTap: () {
                     Get.bottomSheet(
-                      Column(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            margin: const EdgeInsets.all(12),
-                            width: double.infinity,
-                            decoration: BoxDecoration(
-                              color: secondaryColor,
-                              shape: BoxShape.rectangle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withOpacity(0.5),
-                                  spreadRadius: 1,
-                                  offset: Offset(
-                                      -5, 5), // changes position of shadow
+                      Container(
+                        height: 150,
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              margin: const EdgeInsets.all(12),
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: secondaryColor,
+                                shape: BoxShape.rectangle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.5),
+                                    spreadRadius: 1,
+                                    offset: Offset(
+                                        -5, 5), // changes position of shadow
+                                  ),
+                                ],
+                              ),
+                              child: Center(
+                                child: Text(
+                                  "Silahkan Geser Radius Yang Diinginkan",
+                                  style: TextStyle(fontSize: 18),
                                 ),
-                              ],
-                            ),
-                            child: Center(
-                              child: Text(
-                                "Silahkan Geser Radius Yang Diinginkan",
-                                style: TextStyle(fontSize: 18),
                               ),
                             ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            margin: const EdgeInsets.only(
-                              left: 12,
-                              right: 12,
-                              bottom: 12,
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              margin: const EdgeInsets.only(
+                                left: 12,
+                                right: 12,
+                                bottom: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: secondaryColor,
+                                shape: BoxShape.rectangle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.5),
+                                    spreadRadius: 1,
+                                    offset: Offset(
+                                        -5, 5), // changes position of shadow
+                                  ),
+                                ],
+                              ),
+                              child: InputSlider(
+                                onChangeEnd: controller.changeRadius,
+                                defaultValue: controller.radius.value,
+                                min: 0.0,
+                                max: 50.0,
+                                decimalPlaces: 0,
+                                activeSliderColor: dangerColor,
+                                onChange: (double) {},
+                              ),
                             ),
-                            decoration: BoxDecoration(
-                              color: secondaryColor,
-                              shape: BoxShape.rectangle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withOpacity(0.5),
-                                  spreadRadius: 1,
-                                  offset: Offset(
-                                      -5, 5), // changes position of shadow
-                                ),
-                              ],
-                            ),
-                            child: InputSlider(
-                              onChangeEnd: controller.changeRadius,
-                              defaultValue: controller.radius.value,
-                              min: 0.0,
-                              max: 1000.0,
-                              decimalPlaces: 0,
-                              activeSliderColor: dangerColor,
-                              onChange: (double) {},
-                            ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   },

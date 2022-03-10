@@ -19,3 +19,9 @@ const kHeaderStyle = TextStyle(
   fontWeight: FontWeight.bold,
   color: Colors.black,
 );
+
+const kTabStyle = TextStyle(
+  fontSize: 14,
+  fontWeight: FontWeight.bold,
+  color: Colors.black,
+);
