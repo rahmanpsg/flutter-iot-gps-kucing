@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'dart:developer';
+import 'dart:typed_data';
+
+import 'dart:ui' as ui;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:iot_gps_kucing/app/data/models/lokasi_model.dart';
@@ -28,7 +32,7 @@ class LokasiController extends GetxController {
   RxDouble radius = 0.0.obs;
 
   // Lokasi Alat
-  Rx<LokasiModel> lokasi = LokasiModel().obs;
+  // Rx<LokasiModel> lokasi = LokasiModel().obs;
 
   // List lokasi alat
   RxList<LokasiModel> listLokasi = <LokasiModel>[].obs;
@@ -39,17 +43,29 @@ class LokasiController extends GetxController {
 
   // Map
   late final Set<Marker> markers = <Marker>{}.obs;
+  late final Set<Polyline> polyline = <Polyline>{}.obs;
 
   late Circle circle;
   late Marker marker;
   late Marker markerPengaturan;
-  late Polyline polyline;
 
   late final BitmapDescriptor markerIcon;
   late final BitmapDescriptor circleIcon;
 
   // Tabel histori
   late final List<DatatableHeader> headerDataTable;
+
+  double get lat => listLokasi.isEmpty ? 0 : listLokasi.first.latitude;
+
+  double get lng => listLokasi.isEmpty ? 0 : listLokasi.first.longitude;
+
+  double get jarak => listLokasi.isEmpty ? 0 : listLokasi.first.jarak;
+
+  double get suhu => listLokasi.isEmpty ? 0 : listLokasi.first.suhu;
+
+  String get waktu => listLokasi.isEmpty ? "-" : listLokasi.first.waktu;
+
+  // double get
 
   @override
   void onInit() async {
@@ -63,21 +79,13 @@ class LokasiController extends GetxController {
     refPengaturan = database.ref("pengaturan");
     refLokasi = database.ref("data");
 
-    markerIcon = await BitmapDescriptor.fromAssetImage(
-      ImageConfiguration(devicePixelRatio: 2.5),
-      'assets/images/marker.png',
-    );
-    circleIcon = await BitmapDescriptor.fromAssetImage(
-      ImageConfiguration(
-        devicePixelRatio: 1,
-      ),
-      'assets/images/circle.png',
-    );
+    loadMarkerImage();
 
-    await loadListLokasi();
+    listLokasi.listen(onListLokasiUpdate);
+
+    await streamListLokasi();
 
     await initDataPengaturan();
-    streamDataLokasi();
 
     initDataTable();
 
@@ -85,9 +93,115 @@ class LokasiController extends GetxController {
   }
 
   void onMapCreated(GoogleMapController c) {
-    c.setMapStyle(Utils.mapStyles);
-
     if (!gmapController.isCompleted) gmapController.complete(c);
+  }
+
+  Future<void> streamListLokasi() async {
+    try {
+      Stream<QuerySnapshot> snapshot = refData.orderBy("waktu").snapshots();
+
+      snapshot.forEach((data) {
+        List<LokasiModel> _listLokasi = [];
+
+        for (var doc in data.docs) {
+          _listLokasi.insert(
+            0,
+            LokasiModel.fromMap(
+              {
+                "id": doc.id,
+                ...doc.data() as Map,
+              },
+            ),
+          );
+        }
+
+        listLokasi.clear();
+        listLokasi.addAll(_listLokasi);
+      });
+    } catch (e) {
+      log(e.toString());
+    }
+  }
+
+  void onListLokasiUpdate(List<LokasiModel> _listLokasi) {
+    try {
+      markers.clear();
+
+      // double _prevLat = 0, _prevLng = 0;
+
+      for (var entries in _listLokasi.asMap().entries) {
+        double _lat = entries.value.latitude;
+        double _lng = entries.value.longitude;
+        String _waktu = entries.value.waktu;
+
+        if (entries.key == 0) {
+          markers.add(Marker(
+            markerId: MarkerId('posisi'),
+            position: LatLng(
+              _lat,
+              _lng,
+            ),
+            infoWindow: InfoWindow(
+              title: 'Lokasi Kucing',
+              snippet: _waktu,
+            ),
+            icon: markerIcon,
+          ));
+        } else {
+          // if (_prevLat == _lat && _prevLng == _lng) {
+          //   markers.last.infoWindow.snippet.toString();
+          // }
+
+          markers.add(
+            Marker(
+              markerId: MarkerId("posisi_${entries.key}"),
+              position: LatLng(
+                _lat,
+                _lng,
+              ),
+              infoWindow: InfoWindow(
+                title: 'Lokasi Kucing',
+                snippet: _waktu,
+              ),
+              icon: circleIcon,
+            ),
+          );
+        }
+      }
+
+      polyline.add(Polyline(
+        polylineId: PolylineId("poly"),
+        color: Color.fromARGB(255, 40, 122, 198),
+        width: 5,
+        points: _listLokasi
+            .map(
+              (lokasi) => LatLng(lokasi.latitude, lokasi.longitude),
+            )
+            .toList(),
+      ));
+    } catch (e) {
+      log(e.toString());
+    }
+  }
+
+  void resetListLokasi() {
+    Get.defaultDialog(
+        title: "Informasi",
+        middleText: "Semua data akan dihapus?!",
+        textCancel: "Batal",
+        textConfirm: "Oke",
+        confirmTextColor: dangerColor,
+        buttonColor: primaryColor,
+        cancelTextColor: warningColor,
+        onConfirm: () {
+          refData.get().then((value) {
+            for (var snapshot in value.docs) {
+              snapshot.reference.delete();
+            }
+          });
+
+          Get.back();
+        });
   }
 
   Future initDataPengaturan() async {
@@ -103,81 +217,73 @@ class LokasiController extends GetxController {
 
     radius.value = _pengaturan.radius;
 
-    initCircleMarker();
+    initCircleAndMarker();
   }
 
-  void initCircleMarker() async {
-    circle = Circle(
-      circleId: CircleId('rumah'),
-      center: LatLng(latitude.value, longitude.value),
-      radius: radius.value,
-      fillColor: secondaryColor.withOpacity(.5),
-      strokeColor: primaryColor,
-      strokeWidth: 3,
-    );
+  void loadMarkerImage() async {
+    // markerIcon = await BitmapDescriptor.fromAssetImage(
+    //   ImageConfiguration(devicePixelRatio: 2.5),
+    //   'assets/images/marker.png',
+    // );
+    // circleIcon = await BitmapDescriptor.fromAssetImage(
+    //   ImageConfiguration(
+    //     devicePixelRatio: 1,
+    //   ),
+    //   'assets/images/circle.png',
+    // );
 
-    markers.add(Marker(
-      markerId: MarkerId('posisi'),
-      position: LatLng(
-        listLokasi.first.latitude ?? latitude.value,
-        listLokasi.first.longitude ?? longitude.value,
-      ),
-      infoWindow: InfoWindow(
-        title: 'Lokasi Kucing',
-        snippet: '${latitude.value}, ${longitude.value}',
-      ),
-      icon: markerIcon,
-    ));
+    final Uint8List markerAsset =
+        await getBytesFromAsset('assets/images/marker.png', 60);
+    final Uint8List circleAsset =
+        await getBytesFromAsset('assets/images/circle.png', 30);
 
-    log(listLokasi.first.latitude.toString());
-
-    markerPengaturan = Marker(
-      markerId: MarkerId('rumah'),
-      position: LatLng(latitude.value, longitude.value),
-      draggable: true,
-      onDragEnd: changeTitikKoordinat,
-    );
+    markerIcon = BitmapDescriptor.fromBytes(markerAsset);
+    circleIcon = BitmapDescriptor.fromBytes(circleAsset);
   }
 
-  void streamDataLokasi() {
-    Stream<DatabaseEvent> stream = refLokasi.onValue;
+  void initCircleAndMarker() async {
+    try {
+      circle = Circle(
+        circleId: CircleId('rumah'),
+        center: LatLng(latitude.value, longitude.value),
+        radius: radius.value,
+        fillColor: secondaryColor.withOpacity(.5),
+        strokeColor: primaryColor,
+        strokeWidth: 3,
+      );
 
-    stream.listen((DatabaseEvent event) {
-      if (event.snapshot.exists) {
-        Map<dynamic, dynamic> values =
-            event.snapshot.value as Map<dynamic, dynamic>;
-
-        LokasiModel _lokasi = LokasiModel.fromMap(values);
-
-        lokasi.update((val) {
-          val!.latitude = _lokasi.latitude;
-          val.longitude = _lokasi.longitude;
-          val.suhu = _lokasi.suhu;
-          val.waktu = _lokasi.waktu;
-        });
-
-        initCircleMarker();
-      }
-    });
+      markerPengaturan = Marker(
+        markerId: MarkerId('rumah'),
+        position: LatLng(latitude.value, longitude.value),
+        draggable: true,
+        onDragEnd: changeTitikKoordinat,
+      );
+    } catch (e) {
+      log(e.toString());
+    }
   }
 
   void changeTitikKoordinat(LatLng? val) {
-    latitude.value = val!.latitude;
-    longitude.value = val.longitude;
+    try {
+      latitude.value = val!.latitude;
+      longitude.value = val.longitude;
 
-    refPengaturan.update({
-      "latitude": latitude.value,
-      "longitude": longitude.value,
-    });
+      refPengaturan.update({
+        "latitude": latitude.value,
+        "longitude": longitude.value,
+      });
 
-    initCircleMarker();
-    changeCamera();
+      initCircleAndMarker();
+      changeCamera();
 
-    Get.snackbar(
-      "Informasi",
-      "Titik Koordinat berhasil disimpan",
-      backgroundColor: bgColor,
-    );
+      Get.snackbar(
+        "Informasi",
+        "Titik Koordinat berhasil disimpan",
+        backgroundColor: bgColor,
+      );
+    } catch (e) {
+      log(e.toString());
+    }
   }
 
   void changeRadius(double val) {
@@ -187,7 +293,7 @@ class LokasiController extends GetxController {
       "radius": radius.value,
     });
 
-    initCircleMarker();
+    initCircleAndMarker();
 
     Get.snackbar(
       "Informasi",
@@ -236,6 +342,13 @@ class LokasiController extends GetxController {
         },
       ),
       DatatableHeader(
+        text: "Radius",
+        value: "radius",
+        sourceBuilder: (value, row) {
+          return Text("$value M");
+        },
+      ),
+      DatatableHeader(
         text: "Suhu",
         value: "suhu",
         sourceBuilder: (value, row) {
@@ -245,221 +358,13 @@ class LokasiController extends GetxController {
     ];
   }
 
-  Future<void> loadListLokasi() async {
-    try {
-      Stream<QuerySnapshot> snapshot = refData.orderBy("waktu").snapshots();
-
-      // for (var doc in snapshot.) {
-      //   listLokasi.add(LokasiModel.fromMap(doc.data() as Map));
-      // }
-
-      snapshot.forEach((data) {
-        for (var doc in data.docs) {
-          listLokasi.insert(0, LokasiModel.fromMap(doc.data() as Map));
-        }
-
-        for (var entries in listLokasi.asMap().entries) {
-          if (entries.key == 0) continue;
-
-          markers.add(Marker(
-            markerId: MarkerId("posisi_${entries.key}"),
-            position: LatLng(
-              entries.value.latitude ?? latitude.value,
-              entries.value.longitude ?? longitude.value,
-            ),
-            infoWindow: InfoWindow(
-              title: 'Lokasi Kucing',
-              snippet: '${entries.value.waktu}',
-            ),
-            icon: circleIcon,
-          ));
-        }
-
-        // List<LatLng> _lokasis = [];
-
-        // for (var lokasi in listLokasi) {
-        //   log(lokasi.toJson().toString());
-        //   _lokasis.add(LatLng(lokasi.latitude ?? 0, lokasi.longitude ?? 0));
-        // }
-
-        polyline = Polyline(
-          polylineId: PolylineId("poly"),
-          color: Color.fromARGB(255, 40, 122, 198),
-          width: 5,
-          points: listLokasi
-              .map(
-                (lokasi) => LatLng(lokasi.latitude ?? 0, lokasi.longitude ?? 0),
-              )
-              .toList(),
-        );
-
-        log(polyline.toJson().toString());
-      });
-    } catch (e) {
-      log(e.toString());
-    }
+  Future<Uint8List> getBytesFromAsset(String path, int width) async {
+    ByteData data = await rootBundle.load(path);
+    ui.Codec codec = await ui.instantiateImageCodec(data.buffer.asUint8List(),
+        targetWidth: width);
+    ui.FrameInfo fi = await codec.getNextFrame();
+    return (await fi.image.toByteData(format: ui.ImageByteFormat.png))!
+        .buffer
+        .asUint8List();
   }
-}
-
-class Utils {
-  static String mapStyles = '''[
-  {
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#f5f5f5"
-      }
-    ]
-  },
-  {
-    "elementType": "labels.icon",
-    "stylers": [
-      {
-        "visibility": "off"
-      }
-    ]
-  },
-  {
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#616161"
-      }
-    ]
-  },
-  {
-    "elementType": "labels.text.stroke",
-    "stylers": [
-      {
-        "color": "#f5f5f5"
-      }
-    ]
-  },
-  {
-    "featureType": "administrative.land_parcel",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#bdbdbd"
-      }
-    ]
-  },
-  {
-    "featureType": "poi",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#eeeeee"
-      }
-    ]
-  },
-  {
-    "featureType": "poi",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#757575"
-      }
-    ]
-  },
-  {
-    "featureType": "poi.park",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#e5e5e5"
-      }
-    ]
-  },
-  {
-    "featureType": "poi.park",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#9e9e9e"
-      }
-    ]
-  },
-  {
-    "featureType": "road",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#ffffff"
-      }
-    ]
-  },
-  {
-    "featureType": "road.arterial",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#757575"
-      }
-    ]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#dadada"
-      }
-    ]
-  },
-  {
-    "featureType": "road.highway",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#616161"
-      }
-    ]
-  },
-  {
-    "featureType": "road.local",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#9e9e9e"
-      }
-    ]
-  },
-  {
-    "featureType": "transit.line",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#e5e5e5"
-      }
-    ]
-  },
-  {
-    "featureType": "transit.station",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#eeeeee"
-      }
-    ]
-  },
-  {
-    "featureType": "water",
-    "elementType": "geometry",
-    "stylers": [
-      {
-        "color": "#c9c9c9"
-      }
-    ]
-  },
-  {
-    "featureType": "water",
-    "elementType": "labels.text.fill",
-    "stylers": [
-      {
-        "color": "#9e9e9e"
-      }
-    ]
-  }
-]''';
 }

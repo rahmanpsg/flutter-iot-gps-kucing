@@ -21,7 +21,7 @@ class LokasiView extends GetView<LokasiController> {
             indicatorColor: bgColor,
             tabs: [
               Tab(
-                text: "Map",
+                text: "Maps",
               ),
               Tab(
                 text: "Histori",
@@ -30,6 +30,7 @@ class LokasiView extends GetView<LokasiController> {
           ),
         ),
         body: TabBarView(
+          physics: NeverScrollableScrollPhysics(),
           children: [
             MapView(),
             HistoriView(),

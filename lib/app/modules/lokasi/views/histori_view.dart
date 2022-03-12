@@ -42,6 +42,29 @@ class HistoriView extends GetView<LokasiController> {
                           style: kTabStyle,
                         ),
                       ),
+                      actions: [
+                        TextButton.icon(
+                          onPressed: controller.listLokasi.isEmpty
+                              ? null
+                              : controller.resetListLokasi,
+                          icon: Icon(
+                            Icons.clear_all,
+                            color: Colors.white,
+                          ),
+                          label: Text(
+                            "Reset Data",
+                            style: TextStyle(
+                              color: Colors.white,
+                            ),
+                          ),
+                          style: ButtonStyle(
+                            backgroundColor: MaterialStateProperty.all(
+                                controller.listLokasi.isEmpty
+                                    ? dangerColor.withOpacity(.5)
+                                    : dangerColor),
+                          ),
+                        )
+                      ],
                       headers: controller.headerDataTable,
                       reponseScreenSizes: [ScreenSize.xs],
                       source: controller.listLokasi
