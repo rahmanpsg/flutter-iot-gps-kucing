@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:developer';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'dart:ui' as ui;
@@ -13,7 +14,10 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:iot_gps_kucing/app/data/models/lokasi_model.dart';
 import 'package:iot_gps_kucing/app/data/models/pengaturan_model.dart';
 import 'package:iot_gps_kucing/app/themes/app_colors.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:responsive_table/responsive_table.dart';
+import 'package:syncfusion_flutter_xlsio/xlsio.dart';
 
 class LokasiController extends GetxController {
   late final Completer<GoogleMapController> gmapController;
@@ -79,7 +83,7 @@ class LokasiController extends GetxController {
     refPengaturan = database.ref("pengaturan");
     refLokasi = database.ref("data");
 
-    loadMarkerImage();
+    await loadMarkerImage();
 
     listLokasi.listen(onListLokasiUpdate);
 
@@ -220,7 +224,7 @@ class LokasiController extends GetxController {
     initCircleAndMarker();
   }
 
-  void loadMarkerImage() async {
+  Future<void> loadMarkerImage() async {
     // markerIcon = await BitmapDescriptor.fromAssetImage(
     //   ImageConfiguration(devicePixelRatio: 2.5),
     //   'assets/images/marker.png',
@@ -279,7 +283,7 @@ class LokasiController extends GetxController {
       Get.snackbar(
         "Informasi",
         "Titik Koordinat berhasil disimpan",
-        backgroundColor: bgColor,
+        backgroundColor: Colors.greenAccent,
       );
     } catch (e) {
       log(e.toString());
@@ -298,7 +302,7 @@ class LokasiController extends GetxController {
     Get.snackbar(
       "Informasi",
       "Radius berhasil disimpan",
-      backgroundColor: bgColor,
+      backgroundColor: Colors.greenAccent,
     );
   }
 
@@ -366,5 +370,100 @@ class LokasiController extends GetxController {
     return (await fi.image.toByteData(format: ui.ImageByteFormat.png))!
         .buffer
         .asUint8List();
+  }
+
+  Future<void> exportToExcel() async {
+    try {
+      final Workbook workbook = Workbook();
+      final Worksheet sheet = workbook.worksheets[0];
+
+      // Header
+      Style headerStyle = workbook.styles.add("style");
+      headerStyle.backColor = '#FFE699';
+      headerStyle.bold = true;
+      headerStyle.borders.all.lineStyle = LineStyle.thin;
+
+      final List<String> headers = [
+        "Nomor",
+        "Tanggal",
+        "Jam",
+        "Latitude",
+        "Longitude",
+        "Jarak",
+        "Radius",
+        "Suhu"
+      ];
+
+      // header
+      for (var entries in headers.asMap().entries) {
+        final Range range = sheet.getRangeByIndex(1, entries.key + 1);
+        range.cellStyle = headerStyle;
+        range.cellStyle.wrapText = true;
+        range.setText(entries.value);
+      }
+
+      Style style = workbook.styles.add("bodyStyle");
+      style.backColor = '#FFE699';
+      style.borders.all.lineStyle = LineStyle.thin;
+
+      // body
+      for (var entries in listLokasi.asMap().entries) {
+        var lokasi = entries.value.toJson();
+
+        int rowIndex = entries.key + 2;
+        int columnIndex = 1;
+
+        final Range rangeNomor = sheet.getRangeByIndex(rowIndex, columnIndex);
+        rangeNomor.cellStyle = style;
+        rangeNomor.cellStyle.wrapText = true;
+        rangeNomor.setText((entries.key + 1).toString());
+        rangeNomor.autoFitRows();
+
+        for (var item in lokasi.entries) {
+          final Range range = sheet.getRangeByIndex(rowIndex, ++columnIndex);
+          range.cellStyle = style;
+          range.cellStyle.wrapText = true;
+
+          var value = item.value;
+
+          if (item.key == 'jarak' || item.key == 'radius') {
+            value = (value as double).toStringAsFixed(2) + ' M';
+          } else if (item.key == 'suhu') {
+            value = (value as double).toStringAsFixed(2) + ' C';
+          }
+
+          if (item.key == 'waktu') {
+            String tanggal = value.toString().split(' ')[0];
+            String jam = value.toString().split(' ')[1];
+
+            final Range rangeJam =
+                sheet.getRangeByIndex(rowIndex, ++columnIndex);
+            rangeJam.cellStyle = style;
+            rangeJam.cellStyle.wrapText = true;
+
+            rangeJam.setText(jam);
+            rangeJam.autoFitColumns();
+
+            value = tanggal;
+          }
+          range.setText(value.toString());
+          range.autoFitColumns();
+        }
+      }
+
+      final List<int> bytes = workbook.saveAsStream();
+      workbook.dispose();
+
+      String path = (await getExternalStorageDirectory())!.path;
+      String fileName = "$path/histori_kucing.xlsx";
+
+      print(fileName);
+
+      final File file = File(fileName);
+      await file.writeAsBytes(bytes, flush: true);
+      OpenFile.open(fileName);
+    } catch (e) {
+      log(e.toString());
+    }
   }
 }

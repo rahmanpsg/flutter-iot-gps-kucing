@@ -23,12 +23,12 @@ class LokasiModel {
   });
 
   Map<String, dynamic> toJson() => {
+        "waktu": waktu,
         "latitude": latitude,
         "longitude": longitude,
         "jarak": jarak,
         "radius": radius,
         "suhu": suhu,
-        "waktu": waktu,
       };
 
   LokasiModel.fromMap(Map<dynamic, dynamic> map) {

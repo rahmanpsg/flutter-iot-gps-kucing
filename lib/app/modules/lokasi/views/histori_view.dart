@@ -46,6 +46,27 @@ class HistoriView extends GetView<LokasiController> {
                         TextButton.icon(
                           onPressed: controller.listLokasi.isEmpty
                               ? null
+                              : controller.exportToExcel,
+                          icon: Icon(
+                            Icons.import_export,
+                            color: Colors.white,
+                          ),
+                          label: Text(
+                            "Export Data",
+                            style: TextStyle(
+                              color: Colors.white,
+                            ),
+                          ),
+                          style: ButtonStyle(
+                            backgroundColor: MaterialStateProperty.all(
+                                controller.listLokasi.isEmpty
+                                    ? Colors.greenAccent.withOpacity(.7)
+                                    : Colors.greenAccent),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: controller.listLokasi.isEmpty
+                              ? null
                               : controller.resetListLokasi,
                           icon: Icon(
                             Icons.clear_all,
@@ -63,7 +84,7 @@ class HistoriView extends GetView<LokasiController> {
                                     ? dangerColor.withOpacity(.5)
                                     : dangerColor),
                           ),
-                        )
+                        ),
                       ],
                       headers: controller.headerDataTable,
                       reponseScreenSizes: [ScreenSize.xs],
