@@ -53,6 +53,7 @@ class MapView extends GetView<LokasiController> {
                     ],
                   ),
                 ),
+
                 // const SizedBox(height: 10),
                 Expanded(
                   child: Container(
@@ -72,6 +73,7 @@ class MapView extends GetView<LokasiController> {
                     child: GoogleMap(
                       mapType: MapType.hybrid,
                       tiltGesturesEnabled: false,
+                      mapToolbarEnabled: false,
                       initialCameraPosition: CameraPosition(
                         target: LatLng(
                           controller.latitude.value,

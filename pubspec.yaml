@@ -21,6 +21,8 @@ dependencies:
   path_provider: ^2.0.9
   responsive_table: ^0.2.0+2
   syncfusion_flutter_xlsio: ^19.4.55-beta
+  syncfusion_officechart: ^19.4.56-beta
+  url_launcher: ^6.0.20
 
 dev_dependencies:
   flutter_lints: ^1.0.0

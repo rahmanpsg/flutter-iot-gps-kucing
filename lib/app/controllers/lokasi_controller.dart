@@ -8,6 +8,7 @@ import 'dart:ui' as ui;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
+
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -17,7 +18,9 @@ import 'package:iot_gps_kucing/app/themes/app_colors.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:responsive_table/responsive_table.dart';
-import 'package:syncfusion_flutter_xlsio/xlsio.dart';
+import 'package:syncfusion_flutter_xlsio/xlsio.dart' as xlsio;
+import 'package:syncfusion_officechart/officechart.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LokasiController extends GetxController {
   late final Completer<GoogleMapController> gmapController;
@@ -138,39 +141,58 @@ class LokasiController extends GetxController {
         double _lng = entries.value.longitude;
         String _waktu = entries.value.waktu;
 
-        if (entries.key == 0) {
-          markers.add(Marker(
-            markerId: MarkerId('posisi'),
-            position: LatLng(
-              _lat,
-              _lng,
-            ),
-            infoWindow: InfoWindow(
-              title: 'Lokasi Kucing',
-              snippet: _waktu,
-            ),
-            icon: markerIcon,
-          ));
-        } else {
-          // if (_prevLat == _lat && _prevLng == _lng) {
-          //   markers.last.infoWindow.snippet.toString();
-          // }
-
-          markers.add(
-            Marker(
+        markers.add(
+          Marker(
               markerId: MarkerId("posisi_${entries.key}"),
               position: LatLng(
                 _lat,
                 _lng,
               ),
-              infoWindow: InfoWindow(
-                title: 'Lokasi Kucing',
-                snippet: _waktu,
-              ),
-              icon: circleIcon,
-            ),
-          );
-        }
+              icon: entries.key == 0 ? markerIcon : circleIcon,
+              onTap: () {
+                Get.bottomSheet(
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    margin: const EdgeInsets.all(12),
+                    width: double.infinity,
+                    height: 110,
+                    decoration: BoxDecoration(
+                      color: secondaryColor,
+                      shape: BoxShape.rectangle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.5),
+                          spreadRadius: 1,
+                          offset: Offset(-5, 5), // changes position of shadow
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: <Widget>[
+                        Text("Waktu : $_waktu"),
+                        Text("Latitude :$_lat"),
+                        Text("Longitude :$_lng"),
+                        OutlineButton.icon(
+                          onPressed: () {
+                            navigateTo(_lat, _lng);
+                          },
+                          icon: Icon(
+                            Icons.navigation_sharp,
+                            color: Colors.black,
+                          ),
+                          label: Text(
+                            "Navigasi",
+                            style: TextStyle(
+                              color: Colors.black,
+                            ),
+                          ),
+                        )
+                      ],
+                    ),
+                  ),
+                );
+              }),
+        );
       }
 
       polyline.add(Polyline(
@@ -374,14 +396,14 @@ class LokasiController extends GetxController {
 
   Future<void> exportToExcel() async {
     try {
-      final Workbook workbook = Workbook();
-      final Worksheet sheet = workbook.worksheets[0];
+      final xlsio.Workbook workbook = xlsio.Workbook();
+      final xlsio.Worksheet sheet = workbook.worksheets[0];
 
       // Header
-      Style headerStyle = workbook.styles.add("style");
+      xlsio.Style headerStyle = workbook.styles.add("style");
       headerStyle.backColor = '#FFE699';
       headerStyle.bold = true;
-      headerStyle.borders.all.lineStyle = LineStyle.thin;
+      headerStyle.borders.all.lineStyle = xlsio.LineStyle.thin;
 
       final List<String> headers = [
         "Nomor",
@@ -394,17 +416,26 @@ class LokasiController extends GetxController {
         "Suhu"
       ];
 
+      final List<Map<String, String>> listKeterangan = [
+        {"jarak": "<= 10 Meter", "warna": "#32a868", "total": "0"},
+        {"jarak": "<= 20 Meter", "warna": "#89a832", "total": "0"},
+        {"jarak": "<= 30 Meter", "warna": "#f5d016", "total": "0"},
+        {"jarak": "<= 40 Meter", "warna": "#f5a716", "total": "0"},
+        {"jarak": "<= 50 Meter", "warna": "#f57316", "total": "0"},
+        {"jarak": "> 50 Meter", "warna": "#f51616", "total": "0"},
+      ];
+
       // header
       for (var entries in headers.asMap().entries) {
-        final Range range = sheet.getRangeByIndex(1, entries.key + 1);
+        final xlsio.Range range = sheet.getRangeByIndex(1, entries.key + 1);
         range.cellStyle = headerStyle;
         range.cellStyle.wrapText = true;
         range.setText(entries.value);
       }
 
-      Style style = workbook.styles.add("bodyStyle");
-      style.backColor = '#FFE699';
-      style.borders.all.lineStyle = LineStyle.thin;
+      xlsio.Style style = workbook.styles.add("bodyStyle");
+      style.backColor = '#ffffff';
+      style.borders.all.lineStyle = xlsio.LineStyle.thin;
 
       // body
       for (var entries in listLokasi.asMap().entries) {
@@ -413,20 +444,47 @@ class LokasiController extends GetxController {
         int rowIndex = entries.key + 2;
         int columnIndex = 1;
 
-        final Range rangeNomor = sheet.getRangeByIndex(rowIndex, columnIndex);
+        final xlsio.Range rangeNomor =
+            sheet.getRangeByIndex(rowIndex, columnIndex);
         rangeNomor.cellStyle = style;
         rangeNomor.cellStyle.wrapText = true;
         rangeNomor.setText((entries.key + 1).toString());
         rangeNomor.autoFitRows();
 
         for (var item in lokasi.entries) {
-          final Range range = sheet.getRangeByIndex(rowIndex, ++columnIndex);
-          range.cellStyle = style;
-          range.cellStyle.wrapText = true;
-
           var value = item.value;
 
+          style.backColor = '#ffffff';
+
           if (item.key == 'jarak' || item.key == 'radius') {
+            // klasifikasi warna
+            if (item.key == 'jarak') {
+              if (value <= 10) {
+                style.backColor = listKeterangan[0]['warna']!;
+                listKeterangan[0]['total'] =
+                    (int.parse(listKeterangan[0]['total']!) + 1).toString();
+              } else if (value <= 20) {
+                style.backColor = listKeterangan[1]['warna']!;
+                listKeterangan[1]['total'] =
+                    (int.parse(listKeterangan[1]['total']!) + 1).toString();
+              } else if (value <= 30) {
+                style.backColor = listKeterangan[2]['warna']!;
+                listKeterangan[2]['total'] =
+                    (int.parse(listKeterangan[2]['total']!) + 1).toString();
+              } else if (value <= 40) {
+                style.backColor = listKeterangan[3]['warna']!;
+                listKeterangan[3]['total'] =
+                    (int.parse(listKeterangan[3]['total']!) + 1).toString();
+              } else if (value <= 50) {
+                style.backColor = listKeterangan[4]['warna']!;
+                listKeterangan[4]['total'] =
+                    (int.parse(listKeterangan[4]['total']!) + 1).toString();
+              } else {
+                style.backColor = listKeterangan[5]['warna']!;
+                listKeterangan[5]['total'] =
+                    (int.parse(listKeterangan[5]['total']!) + 1).toString();
+              }
+            }
             value = (value as double).toStringAsFixed(2) + ' M';
           } else if (item.key == 'suhu') {
             value = (value as double).toStringAsFixed(2) + ' C';
@@ -436,7 +494,7 @@ class LokasiController extends GetxController {
             String tanggal = value.toString().split(' ')[0];
             String jam = value.toString().split(' ')[1];
 
-            final Range rangeJam =
+            final xlsio.Range rangeJam =
                 sheet.getRangeByIndex(rowIndex, ++columnIndex);
             rangeJam.cellStyle = style;
             rangeJam.cellStyle.wrapText = true;
@@ -446,10 +504,59 @@ class LokasiController extends GetxController {
 
             value = tanggal;
           }
+
+          final xlsio.Range range =
+              sheet.getRangeByIndex(rowIndex, ++columnIndex);
+          range.cellStyle = style;
+          range.cellStyle.wrapText = true;
+
           range.setText(value.toString());
           range.autoFitColumns();
         }
       }
+
+      // Keterangan
+      xlsio.Style styleKet = workbook.styles.add("ketStyle");
+
+      styleKet.borders.all.lineStyle = xlsio.LineStyle.thin;
+
+      final xlsio.Range range = sheet.getRangeByName("J1");
+      range.setText("Keterangan");
+      range.cellStyle = styleKet;
+
+      final xlsio.Range rangeTotal = sheet.getRangeByName("K1");
+      rangeTotal.setText("Total");
+      rangeTotal.cellStyle = styleKet;
+
+      for (var entries in listKeterangan.asMap().entries) {
+        styleKet.backColor = entries.value['warna']!;
+
+        final xlsio.Range range = sheet.getRangeByIndex(entries.key + 2, 10);
+        range.setText(entries.value['jarak']);
+        range.autoFitColumns();
+        range.cellStyle = styleKet;
+
+        final xlsio.Range rangeTotal =
+            sheet.getRangeByIndex(entries.key + 2, 11);
+        rangeTotal.setNumber(double.parse(entries.value['total']!));
+
+        rangeTotal.cellStyle = styleKet;
+      }
+
+      // Create an instances of chart collection.
+      final ChartCollection charts = ChartCollection(sheet);
+
+// Add the chart.
+      final Chart chart = charts.add();
+
+// Set Chart Type.
+      chart.chartType = ExcelChartType.bar;
+
+// Set data range in the worksheet.
+      chart.dataRange = sheet.getRangeByName('J1:K7');
+      chart.isSeriesInRows = false;
+// set charts to worksheet.
+      sheet.charts = charts;
 
       final List<int> bytes = workbook.saveAsStream();
       workbook.dispose();
@@ -464,6 +571,15 @@ class LokasiController extends GetxController {
       OpenFile.open(fileName);
     } catch (e) {
       log(e.toString());
+    }
+  }
+
+  void navigateTo(double lat, double lng) async {
+    var uri = Uri.parse("google.navigation:q=$lat,$lng&mode=d");
+    if (await canLaunch(uri.toString())) {
+      await launch(uri.toString());
+    } else {
+      throw 'Could not launch ${uri.toString()}';
     }
   }
 }
